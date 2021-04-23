@@ -1,0 +1,316 @@
+import streamlit as st
+import pandas as pd
+import base64
+import xlrd
+import xlsxwriter
+import cx_Oracle
+
+
+import os
+from io import BytesIO
+
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+import urllib.request
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MaxAbsScaler
+from sklearn.preprocessing import RobustScaler
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
+
+
+import pickle
+
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import cross_val_score
+from collections import Counter
+from sklearn import model_selection
+
+from sklearn.preprocessing import LabelEncoder
+
+
+
+st.set_option('deprecation.showfileUploaderEncoding', False)
+st.set_option('deprecation.showPyplotGlobalUse', False)
+st.markdown("<h1 style= 'text-align:center; color:Light gray;'>Data Processing App</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style= 'text-align:center; color: Light gray;'>from Omega to Alpha</h3>", unsafe_allow_html=True)
+
+
+st.markdown(
+"""
+<style>
+.reportview-container {
+   background: url("https://media.giphy.com/media/nIPpfk1KbH27KUvyxH/giphy.gif")
+)
+.sidebar .sidebar-content {
+   background: url("https://media.giphy.com/media/nIPpfk1KbH27KUvyxH/giphy.gif")
+)
+</style>
+""",
+unsafe_allow_html=True
+)
+
+
+
+
+
+
+
+
+
+
+path = os.getcwd()
+
+temp = "//temp2.csv"
+
+#os.chdir("C:\Users\pedoti\Documents\streamlit")
+
+path = path+temp
+         
+#path=os.chdir("C:\Users\pedoti\Documents\streamlit\temp2.csv")
+
+st.title ("data processing application")
+
+import streamlit as st
+st.write("Hello")
+st.sidebar.write("sidebar")
+
+name= st.text_input("please enter your name")
+
+st.write("Data import")
+
+file_option = [".CSv","Xlsx","Jpg","Oracle"]
+
+file_select = st.sidebar.radio("please select a file type",file_option)
+
+
+file = st.file_uploader("please select file",type = "csv")
+    
+
+
+
+
+if file_select == ".CSv":
+    
+    
+   
+    if file:
+            
+            
+            if st.button('Upload File'):
+                df=pd.read_csv(file)
+                st.dataframe(df)
+            
+            
+if file_select == ".Xlsx":
+    
+    
+    file = st.file_uploader("please select file",type = "xlsx")
+    
+
+    if file:
+            
+            
+            if st.button('Upload File'):
+                df=pd.read_excel(file)
+                df.to_Xlsx()
+                st.dataframe(df)
+                
+if file_select == ".Jpg":
+    
+    
+    file = st.file_uploader("please select file",type = "jpg")
+    
+    
+    if file:
+            
+            
+            if st.button('Upload File'):
+                img = file.read()
+                st.image(img)
+                
+                
+if file_select == "Oracle":
+    
+    
+    st.info("Enter Oracle Database information")
+
+
+    user=st.text_input("Enter User name")
+    passwd=st.text_input("Enter Password", type="password")
+    host=st.text_input("Enter Host Address")
+    port=st.text_input("Enter port number")
+    query =st.text_input("Enter the query for the desired data")
+                       
+                       
+                       
+    if st.button("Connect"):
+        
+        con_query="{}/{}@{}:{}/ORCL".format(user,passwd,host,port)
+                       
+        con=cx_Oracle.connect(con_query)
+        
+        if con!=None:
+            st.info("Connection Established Successfully")
+            df = pd.read_sql(query,con)
+            st.dataframe(df)
+            df.to_csv(path,index=False)
+
+                
+                
+                                
+li = ["mean","median","mode"]              
+m = st.sidebar.radio("please choose", li)
+
+            
+            
+def mean():
+    df=pd.read_csv(path)
+    clean_df=(df.fillna(df.mean()))
+    st.dataframe(clean_df)
+    clean_df.to_csv(path)
+
+mean()
+
+def data_export():
+    
+    st.sidebar.write ("Data Export")
+    
+    export_list = ["Xlsx","Csv", "Oracle"]
+    
+    export_select = st.sidebar.radio("please select a export type", export_list)
+    
+         
+    if export_select=="Csv":
+        if st.sidebar.button("Download Csv"):
+            df=pd.read_csv(path)
+            st.sidebar.markdown (get_table_download_link_csv(df), unsafe_allow_html=True)
+            
+            
+                     
+    if export_select=="Xlsx":
+        if st.sidebar.button("Download Xlsx"):
+            df=pd.read_csv(path)
+            st.sidebar.markdown (get_table_download_link_xlsx(df), unsafe_allow_html=True)
+            
+            
+              
+    if export_select == "Oracle":
+        
+        st.info("Enter Oracle Database information")
+        
+        
+        users=st.text_input("Enter Users name")
+        passwd=st.text_input("Enter Password", type="password")
+        host=st.text_input("Enter Host Address")
+        port=st.text_input("Enter port number")
+        table =st.text_input("Enter the name of table to create, if table exist it'll be replaced")
+        if st.button("Connect"):
+            
+            df = pd.read_csv(path)
+            conn = create_engine('oracle+cx_oracle //{}:{}@{}:{}/ORCL'.format(users,passwd,host,port))
+            df.to_sql('{}'.format(table),conn, if_exist='replace')
+            #con_query="{}/{}@{}:{}/ORCL".format(user,passwd,host,port)
+            #con=cx_Oracle.connect(con_query)
+            if conn!=None:
+                st.info("Connection Established Sucessfully and Table Inserted")
+
+
+
+            
+            
+            
+      
+    
+def get_table_download_link_csv(df):
+    try:
+        
+        """Generates alink allowing the data in a given panda dataframe to be downloaded
+        in: dataframes
+        out: href string
+        """
+                
+        csv = df.to_csv(index=False)
+        b64 = base64.b64encode(
+           csv.encode()
+        ).decode() 
+        return f'<a href = "data:file/csv;base64,{b64}" download="myfilename.csv">Download csv file</a>'
+            
+    except Exception as e:
+        st.write("Oops!", e.__class__,"ocurred.")
+        return df
+    
+    
+def to_excel(df):
+    try:
+        output = BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        df.to_excel(writer)
+        writer.save()
+        processed_data = output.getvalue()
+        return processed_data
+    
+    
+    except Exception as e:
+        st.write("Oops!", e.__class__,"ocurred.")
+        return df
+    
+    
+def get_table_download_link_xlsx(df):
+    try:
+        
+        
+        
+        """Generates alink allowing the data in a given panda dataframe to be downloaded
+        in: dataframe
+        out: href string
+        """
+        
+        val = to_excel(df)
+        b64 = base64.b64encode(val)
+        return f'<a href="data:application/octet-stream;base64,"{b64.decode()}" download="dataprep.xlsx">Download xlsx">Download xlsfile/a>'
+    
+    
+    except Exception as e:
+        st.write("Oops!", e.__class__,"ocurred.")
+        return df
+    
+     
+    
+data_export()
+            
+    
+# EDA Function
+
+def eda(df):
+    eda_options = ['pair plot','Histogram','Box Plot']
+    
+    eda_select = st.sideba.radio('Choose a Plot',eda_options)
+    
+    if eda_select == 'pair plot':
+        
+        hue =st.text_input('Please Specify a hue')
+        
+        df=pd.read_csv(path)
+        
+        st.write(df.columns)
+        
+        if st.sidebar.button('Visualize'):
+
+            
+    
+
+            
+            
